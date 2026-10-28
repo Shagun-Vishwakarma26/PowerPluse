@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PowerPulse – Smart Electricity Monitoring & Management System</title>
+  <link rel="stylesheet" href="/css/styles.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* In-page styling refinements */
+    .app-main-content {
+      min-height: calc(100vh - 70px);
+    }
+    #view-guest {
+      min-height: calc(100vh - 70px);
+      align-items: center;
+      justify-content: center;
+      padding: 40px 16px;
+      position: relative;
+      background: linear-gradient(135deg, rgba(10, 10, 10, 0.88) 0%, rgba(17, 17, 20, 0.92) 100%),
+                  url('/images/electricity-bg.jpg') center center / cover no-repeat fixed;
+    }
+    #view-guest::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at 50% 40%, rgba(0, 123, 167, 0.25), transparent 75%);
+      pointer-events: none;
+    }
+    #view-guest.app-view.active {
+      display: flex;
+    }
+    #view-guest.app-view:not(.active) {
+      display: none;
+    }
+    .auth-terminal-wrapper {
+      max-width: 520px;
+      width: 100%;
+      margin: 0 auto;
+      background: rgba(26, 26, 31, 0.94);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 16px;
+      padding: 34px 32px;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45), 0 0 40px rgba(0, 123, 167, 0.2);
+      position: relative;
+      z-index: 1;
+    }
+    .login-role-options {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 18px;
+    }
+    .login-role-option {
+      min-height: 42px;
+      padding: 8px 10px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: #cbd5e1;
+      background: var(--bg-input);
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .login-role-option:hover {
+      border-color: var(--primary-blue);
+    }
+    .login-role-option.active {
+      border-color: var(--primary-blue);
+      color: var(--text-main);
+      background: var(--primary-blue-glow);
+      box-shadow: 0 0 0 1px var(--primary-blue-glow);
+    }
+    .login-role-note {
+      margin: -6px 0 16px;
+      color: #94a3b8;
+      font-size: 0.74rem;
+      line-height: 1.45;
+    }
+    .viewer-subpane, .mgr-subpane, .adm-subpane {
+      display: none;
+      margin-bottom: 28px;
+      animation: fadeIn 0.25s ease;
+    }
+    .viewer-subpane.active, .mgr-subpane.active, .adm-subpane.active {
+      display: block;
+    }
+    .role-notification-list {
+      display: grid;
+      gap: 10px;
+    }
+    .role-notification-list .notif-item {
+      display: block;
+      width: 100%;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      text-align: left;
+      color: var(--text-main);
+    }
+    .role-notification-list .notification-action {
+      cursor: pointer;
+    }
+    .role-notification-list .notification-action:focus-visible {
+      outline: 2px solid #60a5fa;
+      outline-offset: 2px;
+    }
+    .viewer-report-modal {
+      max-height: min(90vh, 760px);
+    }
+    .viewer-report-form {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .viewer-report-form .modal-body {
+      min-height: 0;
+    }
+    .viewer-report-form .modal-footer {
+      flex-shrink: 0;
+    }
+    [data-theme="light"] #view-guest {
+      background: linear-gradient(135deg, rgba(230, 230, 250, 0.94), rgba(229, 228, 226, 0.96)),
+                  url('/images/electricity-bg.jpg') center center / cover no-repeat fixed;
+    }
+    [data-theme="light"] #view-guest::before {
+      background: radial-gradient(circle at 50% 40%, rgba(111, 78, 55, 0.12), transparent 75%);
+    }
+    [data-theme="light"] .auth-terminal-wrapper {
+      background: rgba(229, 228, 226, 0.97);
+      border-color: var(--border-color);
+      box-shadow: var(--shadow-lg);
+    }
+    [data-theme="light"] #view-guest h2,
+    [data-theme="light"] #view-guest label {
+      color: var(--text-main) !important;
+    }
+    [data-theme="light"] #view-guest p,
+    [data-theme="light"] #view-guest small,
+    [data-theme="light"] #view-guest .login-role-option {
+      color: var(--text-muted);
+    }
+    [data-theme="light"] #view-guest .login-role-option.active {
+      color: #fff;
+    }
+    [data-theme="light"] .header-container [style*="color: #ffffff"],
+    [data-theme="light"] .notifications-dropdown [style*="color: #fff"] {
+      color: var(--text-main) !important;
+    }
+    .notification-action {
+      cursor: pointer;
+    }
+    .notification-action:focus-visible {
+      outline: 2px solid #60a5fa;
+      outline-offset: -2px;
+    }
+    @media (max-width: 760px) {
+      .header-container {
+        flex-wrap: wrap;
+      }
+      #header-auth-actions {
+        width: 100%;
+        justify-content: flex-end;
+      }
+      .role-nav-bar {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+      }
+      .role-nav-tab {
+        flex-shrink: 0;
+        white-space: nowrap;
+      }
+    }
+  </style>
+</head>
+<body style="background: var(--bg-main); color: var(--text-main); min-height: 100vh;">
+
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ============================================== -->
+  <!-- UNIFIED TOP HEADER -->
+  <!-- ============================================== -->
+  <header class="unified-header">
+    <div class="header-container">
+      
+      <!-- Brand Logo & Grid Status -->
+      <div style="display: flex; align-items: center; gap: 16px;">
+        <a href="/" class="header-logo-group">
+          <div class="header-brand-icon">
+            <i data-lucide="zap" style="width: 22px; height: 22px;"></i>
+          </div>
+          <div>
+            <h1 style="font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; margin: 0; line-height: 1.2;">PowerPulse</h1>
+            <span style="font-size: 0.72rem; color: #94a3b8; font-weight: 500;">Smart Electricity Monitoring System</span>
+          </div>
+        </a>
+
+        </div>
+
+      <button id="theme-toggle-btn" class="theme-toggle" type="button" aria-label="Switch to light mode">
+        <i data-lucide="sun" aria-hidden="true" style="width: 16px; height: 16px;"></i>
+        <span>Light mode</span>
+      </button>
+
+        <!-- AUTHENTICATED USER NAV ACTIONS -->
+      <div id="header-auth-actions" style="display: none; align-items: center; gap: 16px;">
+        
+        <!-- User Badge & Location -->
+        <div style="text-align: right;" class="hidden-mobile">
+          <div style="display: flex; align-items: center; gap: 8px; justify-content: flex-end;">
+            <span id="hdr-user-name" style="font-size: 0.88rem; font-weight: 700; color: #ffffff;">User</span>
+            <span id="hdr-user-role" class="auth-role-badge badge-viewer" style="margin: 0; padding: 2px 8px; font-size: 0.68rem;">Role</span>
+          </div>
+          <div id="hdr-user-location" style="font-size: 0.72rem; color: #38bdf8; font-weight: 500;">Location</div>
+        </div>
+
+        <!-- In-App Notifications Bell -->
+        <div class="notifications-wrapper">
+          <button id="btn-header-notifications" class="btn-icon-bell" title="Notifications">
+            <i data-lucide="bell" style="width: 18px; height: 18px;"></i>
+            <span id="header-notif-count" class="bell-badge" style="display: none;">0</span>
+          </button>
+
+          <!-- Notifications Dropdown -->
+          <div id="notifications-dropdown" class="notifications-dropdown">
+            <div class="notif-header">
+              <strong style="font-size: 0.85rem; color: #fff;">Notifications</strong>
+              <button id="btn-mark-all-read" class="btn-mark-all-read" style="background: none; border: none; color: #38bdf8; font-size: 0.72rem; cursor: pointer; font-weight: 600;">
+                Mark all read
+              </button>
+            </div>
+            <div id="header-notif-list" class="notif-list">
+              <div style="padding: 20px; text-align: center; color: #94a3b8; font-size: 0.8rem;">Loading notifications...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sign Out Button -->
+        <button id="btn-header-signout" class="btn btn-secondary btn-sm" style="display: flex; align-items: center; gap: 6px;" title="Sign Out">
+          <i data-lucide="log-out" style="width: 15px; height: 15px;"></i>
+          <span>Sign Out</span>
+        </button>
+
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ============================================== -->
+  <!-- MAIN APP CONTAINER -->
+  <!-- ============================================== -->
+  <main class="app-main-content">
+
+    <!-- ============================================== -->
+    <!-- VIEW 1: SIGN-IN ONLY -->
+    <!-- ============================================== -->
+    <section id="view-guest" class="app-view active">
+      <!-- SIGN-IN TERMINAL -->
+      <div id="unified-auth-terminal" class="auth-terminal-wrapper">
+        <div style="text-align: center; margin-bottom: 24px;">
+          <div class="header-brand-icon" style="margin: 0 auto 12px;">
+            <i data-lucide="zap" style="width: 24px; height: 24px;"></i>
+          </div>
+          <h2 style="margin: 0 0 8px; color: #fff; font-size: 1.65rem; font-weight: 800;">Welcome to PowerPulse</h2>
+          <p style="margin: 0; color: #94a3b8; font-size: 0.88rem;">Sign in to continue to your dashboard</p>
+        </div>
+
+        <div id="auth-pane-signin">
+          <div id="login-alert-box" class="alert alert-danger" style="display: none; margin-bottom: 16px; font-size: 0.8rem;"></div>
+
+          <div class="form-group mb-3">
+            <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 8px; display: block;">
+              Choose your account
+            </label>
+            <div class="login-role-options" role="group" aria-label="Choose account type">
+              <button type="button" class="login-role-option" data-login-role="Viewer" aria-pressed="false">Viewer</button>
+              <button type="button" class="login-role-option" data-login-role="Manager" aria-pressed="false">Manager</button>
+              <button type="button" class="login-role-option" data-login-role="Admin" aria-pressed="false">Admin</button>
+            </div>
+            <p id="login-role-note" class="login-role-note" aria-live="polite">
+              Use the email and password provided for your account.
+            </p>
+          </div>
+
+          <form id="form-unified-login">
+            <div class="form-group mb-3">
+              <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; display: block;">
+                Email / Gmail Address
+              </label>
+              <input type="email" id="auth-login-email" class="form-control" placeholder="name@example.com" required autocomplete="username">
+            </div>
+
+            <div class="form-group mb-4">
+              <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; display: block;">
+                Password
+              </label>
+              <div style="position: relative;">
+                <input type="password" id="auth-login-pwd" class="form-control" placeholder="Enter your password" required autocomplete="current-password" style="padding-right: 42px;">
+                <button type="button" class="btn-toggle-pwd" data-target="auth-login-pwd" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px;">
+                  <i data-lucide="eye" style="width: 16px; height: 16px;"></i>
+                </button>
+              </div>
+            </div>
+
+            <button type="submit" id="btn-submit-login" class="btn btn-primary btn-block" style="padding: 12px; font-weight: 700; font-size: 0.95rem;">
+              <span>Sign In to PowerPulse</span>
+              <i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i>
+            </button>
+          </form>
+
+          <p style="text-align: center; font-size: 0.75rem; color: #94a3b8; margin-top: 16px; margin-bottom: 0;">
+            Role permissions are verified automatically when you sign in.
+          </p>
+          <button type="button" id="btn-show-viewer-register" class="btn btn-secondary btn-block" style="margin-top: 16px; padding: 10px;">
+            New Viewer? Create an account
+          </button>
+        </div>
+
+        <div id="auth-pane-register" style="display: none;">
+          <div id="register-alert-box" class="alert alert-danger" style="display: none; margin-bottom: 16px; font-size: 0.8rem;"></div>
+          <form id="form-unified-register">
+            <div class="form-group mb-3">
+              <label for="reg-name" style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; display: block;">Full Name</label>
+              <input type="text" id="reg-name" class="form-control" placeholder="e.g. Rohan Sharma" required autocomplete="name">
+            </div>
+            <div class="form-group mb-3">
+              <label for="reg-email" style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; display: block;">Email Address</label>
+              <input type="email" id="reg-email" class="form-control" placeholder="name@example.com" required autocomplete="email">
+            </div>
+            <div class="form-group mb-3">
+              <label for="reg-pwd" style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; display: block;">Password (minimum 6 characters)</label>
+              <input type="password" id="reg-pwd" class="form-control" placeholder="Create a password" minlength="6" required autocomplete="new-password">
+            </div>
+            <div class="form-group mb-4">
+              <label for="reg-location" style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1; margin-bottom: 6px; display: block;">Your Location</label>
+              <select id="reg-location" class="form-control" required>
+                <option value="" disabled selected>Loading locations...</option>
+              </select>
+            </div>
+            <button type="submit" id="btn-submit-register" class="btn btn-primary btn-block" style="padding: 12px; font-weight: 700;">
+              Create Viewer Account
+            </button>
+          </form>
+          <button type="button" id="btn-show-login" class="btn btn-secondary btn-block" style="margin-top: 12px; padding: 10px;">
+            Back to Sign In
+          </button>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- ============================================== -->
+    <!-- ============================================== -->
+    <!-- VIEW 2: VIEWER DASHBOARD -->
+    <!-- ============================================== -->
+    <section id="view-viewer" class="app-view">
+      <div class="dashboard-container">
+
+        <!-- VIEWER SUB-NAV -->
+        <div class="role-nav-bar">
+          <button class="role-nav-tab viewer-tab-trigger active" data-tab="v-pane-overview">
+            <i data-lucide="activity" style="width: 16px; height: 16px;"></i>
+            <span>Electricity Overview</span>
+          </button>
+          <button class="role-nav-tab viewer-tab-trigger" data-tab="v-pane-complaints">
+            <i data-lucide="message-square" style="width: 16px; height: 16px;"></i>
+            <span>My Complaints & Support</span>
+          </button>
+          <button class="role-nav-tab viewer-tab-trigger" data-tab="v-pane-notifications">
+            <i data-lucide="bell" style="width: 16px; height: 16px;"></i>
+            <span>Notifications</span>
+          </button>
+        </div>
+
+        <!-- 1. OVERVIEW PANE -->
+        <div id="v-pane-overview" class="viewer-subpane active">
+          
+          <!-- STATUS CARD (Normal vs High Consumption) -->
+          <div id="v-status-card" class="status-card status-normal">
+            <div style="display: flex; align-items: center; gap: 14px;">
+              <div style="width: 44px; height: 44px; border-radius: 10px; background: rgba(255, 255, 255, 0.08); display: flex; align-items: center; justify-content: center;">
+                <span id="v-status-dot" class="pulse-dot dot-success"></span>
+              </div>
+              <div>
+                <h3 id="v-status-text" style="font-size: 1.2rem; font-weight: 800; margin: 0; color: #fff;">Normal Consumption</h3>
+                <p id="v-status-desc" style="font-size: 0.85rem; color: #cbd5e1; margin: 4px 0 0;">
+                  Facility load is stable within standard operational threshold limit.
+                </p>
+              </div>
+            </div>
+            <div style="text-align: right;" class="hidden-mobile">
+              <span id="v-location-tag" style="font-size: 0.82rem; color: #38bdf8; font-weight: 700;">India</span>
+              <div style="font-size: 0.72rem; color: #94a3b8;">Meter Ref: <strong id="v-assigned-meter-badge" style="color: #fff;">MTR-MUM-01</strong></div>
+            </div>
+          </div>
+
+          <!-- STATS CARDS -->
+          <div class="stats-trio">
+            <!-- Latest Reading -->
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-title">Latest Recorded Usage</span>
+                <i data-lucide="gauge" style="color: #38bdf8;"></i>
+              </div>
+              <div id="v-kpi-latest-kwh" class="stat-value">-- kWh</div>
+              <div id="v-kpi-latest-time" class="stat-change" style="color: #94a3b8;">Recorded: Loading...</div>
+            </div>
+
+            <!-- Today's Total -->
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-title">Today's Consumption</span>
+                <i data-lucide="sun" style="color: #fbbf24;"></i>
+              </div>
+              <div id="v-kpi-today-kwh" class="stat-value">-- kWh</div>
+              <div class="stat-change" style="color: #34d399;">Daily accumulated grid draw</div>
+            </div>
+
+            <!-- Monthly Total & Estimated Cost -->
+            <div class="stat-card">
+              <div class="stat-header">
+                <span class="stat-title">Monthly Usage & Cost</span>
+                <i data-lucide="calendar" style="color: #a78bfa;"></i>
+              </div>
+              <div id="v-kpi-monthly-kwh" class="stat-value">-- kWh</div>
+              <div id="v-kpi-monthly-cost" class="stat-change" style="color: #38bdf8; font-weight: 600;">Est. Cost: ₹--</div>
+            </div>
+          </div>
+
+          <!-- USAGE CHART -->
+          <div class="card mb-4" style="padding: 0; overflow: hidden;">
+            <div class="card-header" style="padding: 18px 24px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h4 style="font-size: 1.05rem; font-weight: 700; margin: 0; color: #fff;">Electricity Consumption Trend (Past 7 Days)</h4>
+                <small style="color: #94a3b8;">Daily consumption tracked in kWh</small>
+              </div>
+              <span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #93c5fd;">Interactive Telemetry</span>
+            </div>
+            <div class="card-body" style="padding: 24px;">
+              <div style="height: 280px; position: relative;">
+                <canvas id="chart-viewer-usage"></canvas>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 2. MY COMPLAINTS PANE -->
+        <div id="v-pane-complaints" class="viewer-subpane">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+            <div>
+              <h3 style="font-size: 1.25rem; font-weight: 800; color: #fff; margin: 0;">My Submitted Complaints</h3>
+              <p style="font-size: 0.82rem; color: #94a3b8; margin: 2px 0 0;">Report problems, track investigation status, and review final resolution details.</p>
+            </div>
+            <button id="btn-open-report-problem" class="btn btn-primary" style="font-weight: 700; padding: 10px 20px;">
+              <i data-lucide="plus-circle" style="width: 17px; height: 17px;"></i>
+              <span>Report a Problem</span>
+            </button>
+          </div>
+
+          <!-- Complaints Table -->
+          <div class="card mb-4" style="overflow: hidden; padding: 0;">
+            <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155;">
+              <h4 style="margin: 0; color: #fff;">Submitted Complaints History</h4>
+              <small style="color: #94a3b8;">Track problem report status, technician notes, and communications.</small>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Complaint ID</th>
+                    <th>Title & Category</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                    <th>Submitted</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="viewer-complaints-tbody">
+                  <tr><td colspan="6" style="text-align: center; padding: 24px; color: #94a3b8;">Loading complaints...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <div id="v-pane-notifications" class="viewer-subpane">
+          <div class="card mb-4" style="padding: 0; overflow: hidden;">
+            <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+              <div>
+                <h4 style="margin: 0; color: #fff;">Notifications</h4>
+                <small style="color: #94a3b8;">Complaint progress, resolutions, and account updates.</small>
+              </div>
+              <button type="button" class="btn btn-sm btn-secondary btn-mark-all-read">Mark all read</button>
+            </div>
+            <div class="card-body" style="padding: 20px;">
+              <div class="role-notification-list" data-role-notifications="Viewer"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- ============================================== -->
+    <!-- VIEW 3: MANAGER DASHBOARD -->
+    <!-- ============================================== -->
+    <section id="view-manager" class="app-view">
+      <div class="dashboard-container">
+
+        <!-- MANAGER SUB-NAV -->
+        <div class="role-nav-bar">
+          <button class="role-nav-tab mgr-tab-trigger tab-manager active" data-tab="mgr-pane-overview">
+            <i data-lucide="layout-dashboard" style="width: 16px; height: 16px;"></i>
+            <span>Operations Overview</span>
+          </button>
+          <button class="role-nav-tab mgr-tab-trigger" data-tab="mgr-pane-complaints">
+            <i data-lucide="message-square" style="width: 16px; height: 16px;"></i>
+            <span>Complaints & Support</span>
+          </button>
+          <button class="role-nav-tab mgr-tab-trigger" data-tab="mgr-pane-meters">
+            <i data-lucide="cpu" style="width: 16px; height: 16px;"></i>
+            <span>All Grid Meters & Telemetry</span>
+          </button>
+          <button class="role-nav-tab mgr-tab-trigger" data-tab="mgr-pane-alerts">
+            <i data-lucide="alert-triangle" style="width: 16px; height: 16px;"></i>
+            <span>Consumption Warnings</span>
+          </button>
+          <button class="role-nav-tab mgr-tab-trigger" data-tab="mgr-pane-notifications">
+            <i data-lucide="bell" style="width: 16px; height: 16px;"></i>
+            <span>Notifications</span>
+          </button>
+        </div>
+
+        <!-- 1. MANAGER OVERVIEW PANE -->
+        <div id="mgr-pane-overview" class="mgr-subpane active">
+          
+          <div class="grid grid-4 mb-4">
+            <div class="stat-card">
+              <span class="stat-title">Location Access</span>
+              <select id="mgr-location-select" class="form-control" aria-label="Select manager dashboard location" style="margin-top: 8px; font-size: 1.05rem; font-weight: 700;">
+                <option value="all">All Locations</option>
+              </select>
+              <span class="stat-change" style="color: #94a3b8;">Choose a location to view its data</span>
+            </div>
+
+            <div class="stat-card">
+              <span class="stat-title">Total Consumption</span>
+              <div id="mgr-kpi-consumption" class="stat-value">-- kWh</div>
+              <span class="stat-change" style="color: #34d399;">Past 30 Days Aggregate</span>
+            </div>
+
+            <div class="stat-card">
+              <span class="stat-title">Authorized Grid Meters</span>
+              <div id="mgr-kpi-meters" class="stat-value">--</div>
+              <span class="stat-change" style="color: #38bdf8;">Smart Telemetry Sensors</span>
+            </div>
+
+            <div class="stat-card">
+              <span class="stat-title">Open Facility Issues</span>
+              <div id="mgr-kpi-complaints" class="stat-value" style="color: #fbbf24;">--</div>
+              <span class="stat-change" style="color: #fbbf24;">Pending / In Progress</span>
+            </div>
+          </div>
+
+          <!-- Trend Chart -->
+          <div class="card mb-4" style="padding: 0; overflow: hidden;">
+            <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+              <div>
+                <h4 id="mgr-trend-title" style="font-size: 1.05rem; font-weight: 700; margin: 0; color: #fff;">All Locations Consumption Trend (Month)</h4>
+                <small id="mgr-trend-description" style="color: #94a3b8;">Daily electricity consumption across all locations.</small>
+              </div>
+              <label for="mgr-trend-period" style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.8rem;">
+                View by
+                <select id="mgr-trend-period" class="form-control" style="width: auto; min-width: 120px;">
+                  <option value="day">Day</option>
+                  <option value="week">Week</option>
+                  <option value="month" selected>Month</option>
+                  <option value="year">Year</option>
+                </select>
+              </label>
+            </div>
+            <div class="card-body" style="padding: 24px;">
+              <div style="height: 300px; position: relative;">
+                <canvas id="chart-mgr-trend"></canvas>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 2. MANAGER COMPLAINTS PANE -->
+        <div id="mgr-pane-complaints" class="mgr-subpane">
+          <div class="card mb-4" style="overflow: hidden; padding: 0;">
+            <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155;">
+              <h4 style="margin: 0; color: #fff;">Assigned Regional Complaints Queue</h4>
+              <small style="color: #94a3b8;">Review viewer reports, change status, and document resolution details.</small>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Title & Consumer</th>
+                    <th>Location</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="mgr-complaints-tbody">
+                  <tr><td colspan="6" style="text-align: center; padding: 24px; color: #94a3b8;">Loading complaints...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. MANAGER METERS & TELEMETRY PANE -->
+        <div id="mgr-pane-meters" class="mgr-subpane">
+          <div class="grid grid-2 mb-4">
+            <!-- Meters List -->
+            <div class="card" style="padding: 0; overflow: hidden;">
+              <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155;">
+                <h4 style="margin: 0; color: #fff;">Authorized Grid Meters</h4>
+                <small style="color: #94a3b8;">Active meters within your regional jurisdiction</small>
+              </div>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Meter ID</th>
+                      <th>Location</th>
+                      <th>Type</th>
+                      <th>Current Reading</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody id="mgr-meters-tbody">
+                    <tr><td colspan="5" style="text-align: center; padding: 20px; color: #94a3b8;">Loading meters...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Telemetry Dispatcher -->
+            <div class="card" style="padding: 0; overflow: hidden;">
+              <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155;">
+                <h4 style="margin: 0; color: #22d3ee;">Add Meter Reading</h4>
+                <small style="color: #94a3b8;">Submit reading; values >150 kWh trigger high-load alert</small>
+              </div>
+              <div class="card-body" style="padding: 24px;">
+                <form id="form-sim-telemetry">
+                  <div class="form-group mb-3">
+                    <label style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1;">Target Meter</label>
+                    <select id="sim-meter-select" class="form-control" required></select>
+                  </div>
+
+                  <div class="form-group mb-3">
+                    <label style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1;">Consumption Value (kWh)</label>
+                    <input type="number" id="sim-kwh-value" class="form-control" placeholder="e.g. 185.5" min="0" step="0.1" required>
+                  </div>
+
+                  <div class="form-group mb-3">
+                    <label style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1;">Reading Date</label>
+                    <input type="date" id="sim-reading-date" class="form-control" required>
+                  </div>
+
+                  <div class="form-group mb-4">
+                    <label style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1;">Reading Time</label>
+                    <input type="time" id="sim-reading-time" class="form-control" required>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary btn-block" style="padding: 11px; font-weight: 700;">
+                    Submit Reading
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. MANAGER ALERTS PANE -->
+        <div id="mgr-pane-alerts" class="mgr-subpane">
+          <div class="card mb-4" style="padding: 0; overflow: hidden;">
+            <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155;">
+              <h4 style="margin: 0; color: #fff;">High Consumption Warnings Log</h4>
+              <small style="color: #94a3b8;">Automated threshold breach detections for your region</small>
+            </div>
+            <div class="card-body" style="padding: 20px;">
+              <div id="mgr-alerts-container">
+                <div style="padding: 20px; text-align: center; color: #94a3b8;">Loading alerts...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="mgr-pane-notifications" class="mgr-subpane">
+          <div class="card mb-4" style="padding: 0; overflow: hidden;">
+            <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+              <div>
+                <h4 style="margin: 0; color: #fff;">Notifications</h4>
+                <small style="color: #94a3b8;">Complaint assignments, viewer messages, and status updates.</small>
+              </div>
+              <button type="button" class="btn btn-sm btn-secondary btn-mark-all-read">Mark all read</button>
+            </div>
+            <div class="card-body" style="padding: 20px;">
+              <div class="role-notification-list" data-role-notifications="Manager"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+
+    <!-- ============================================== -->
+    <!-- VIEW 4: ADMIN DASHBOARD -->
+    <!-- ============================================== -->
+    <section id="view-admin" class="app-view">
+      <div class="dashboard-container">
+
+        <!-- ADMIN SUB-NAV -->
+        <div class="role-nav-bar">
+          <button class="role-nav-tab adm-tab-trigger tab-admin active" data-tab="adm-pane-overview">
+            <i data-lucide="shield-check" style="width: 16px; height: 16px;"></i>
+            <span>Grid Overview</span>
+          </button>
+          <button class="role-nav-tab adm-tab-trigger" data-tab="adm-pane-complaints">
+            <i data-lucide="life-buoy" style="width: 16px; height: 16px;"></i>
+            <span>Complaints Command</span>
+          </button>
+          <button class="role-nav-tab adm-tab-trigger" data-tab="adm-pane-users">
+            <i data-lucide="users" style="width: 16px; height: 16px;"></i>
+            <span>User Management</span>
+          </button>
+          <button class="role-nav-tab adm-tab-trigger" data-tab="adm-pane-locations">
+            <i data-lucide="map-pin" style="width: 16px; height: 16px;"></i>
+            <span>Indian Substations & Meters</span>
+          </button>
+          <button class="role-nav-tab adm-tab-trigger" data-tab="adm-pane-settings">
+            <i data-lucide="settings" style="width: 16px; height: 16px;"></i>
+            <span>Alert Thresholds & Rates</span>
+          </button>
+          <button class="role-nav-tab adm-tab-trigger" data-tab="adm-pane-notifications">
+            <i data-lucide="bell" style="width: 16px; height: 16px;"></i>
+            <span>Notifications</span>
+          </button>
+        </div>
+
+        <!-- 1. ADMIN OVERVIEW PANE -->
+        <div id="adm-pane-overview" class="adm-subpane active">
+          
+          <div class="grid grid-5 mb-4">
+            <div class="stat-card">
+              <span class="stat-title">Location Access</span>
+              <select id="adm-location-select" class="form-control" aria-label="Select admin dashboard location" style="margin-top: 8px; font-size: 1.05rem; font-weight: 700;">
+                <option value="all">All Locations</option>
+              </select>
+              <span class="stat-change" style="color: #94a3b8;">Choose a location to view its data</span>
+            </div>
+
+            <div class="stat-card">
+              <span class="stat-title" id="adm-kpi-consumption-title">Total National Consumption</span>
+              <div id="adm-kpi-consumption" class="stat-value" style="color: #fbbf24;">-- kWh</div>
+              <span class="stat-change" id="adm-kpi-consumption-sub" style="color: #34d399;">Grid Draw (Past 30 Days)</span>
+            </div>
+
+            <div class="stat-card">
+              <span class="stat-title">Total Estimated Revenue</span>
+              <div id="adm-kpi-cost" class="stat-value">₹--</div>
+              <span class="stat-change" style="color: #38bdf8;">Based on ₹8.5/kWh</span>
+            </div>
+
+            <div class="stat-card">
+              <span class="stat-title" id="adm-kpi-meters-title">Active Grid Meters</span>
+              <div id="adm-kpi-meters" class="stat-value">--</div>
+              <span class="stat-change" id="adm-kpi-meters-sub" style="color: #a78bfa;">Online Across 7 Metros</span>
+            </div>
+
+            <div class="stat-card">
+              <span class="stat-title" id="adm-kpi-complaints-title">Total National Issues</span>
+              <div id="adm-kpi-complaints" class="stat-value">--</div>
+              <span class="stat-change" id="adm-kpi-complaints-sub" style="color: #f87171;">System Wide Complaints</span>
+            </div>
+          </div>
+
+          <!-- Charts Grid -->
+          <div class="grid grid-2 mb-4">
+            <div class="card" style="padding: 0; overflow: hidden;">
+              <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;">
+                <div>
+                  <h4 id="adm-trend-title" style="font-size: 1rem; font-weight: 700; margin: 0; color: #fff;">National Electricity Consumption Trend (Month)</h4>
+                  <small id="adm-trend-description" style="color: #94a3b8;">Daily aggregate load across all grids.</small>
+                </div>
+                <label for="adm-trend-period" style="display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 0.8rem;">
+                  View by
+                  <select id="adm-trend-period" class="form-control" style="width: auto; min-width: 120px;">
+                    <option value="day">Day</option>
+                    <option value="week">Week</option>
+                    <option value="month" selected>Month</option>
+                    <option value="year">Year</option>
+                  </select>
+                </label>
+              </div>
+              <div class="card-body" style="padding: 20px;">
+                <div style="height: 280px; position: relative;">
+                  <canvas id="chart-adm-trend"></canvas>
+                </div>
+              </div>
+            </div>
+
+            <div class="card" style="padding: 0; overflow: hidden;">
+              <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155;">
+                <h4 style="font-size: 1rem; font-weight: 700; margin: 0; color: #fff;">Indian Metros Consumption Comparison</h4>
+                <small style="color: #94a3b8;">Comparative demand across regional hubs</small>
+              </div>
+              <div class="card-body" style="padding: 20px;">
+                <div style="height: 280px; position: relative;">
+                  <canvas id="chart-adm-locations"></canvas>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- 2. ADMIN COMPLAINTS COMMAND PANE -->
+        <div id="adm-pane-complaints" class="adm-subpane">
+          <div class="card mb-4" style="padding: 0; overflow: hidden;">
+            <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center;">
+              <div>
+                <h4 style="margin: 0; color: #fff;">All Indian Grid Complaints</h4>
+                <small style="color: #94a3b8;">Assign managers, re-prioritize, and reopen closed cases.</small>
+              </div>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Title & Consumer</th>
+                    <th>Assigned Manager</th>
+                    <th>Status</th>
+                    <th>Priority</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="adm-complaints-tbody">
+                  <tr><td colspan="6" style="text-align: center; padding: 24px; color: #94a3b8;">Loading complaints...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3. ADMIN USER MANAGEMENT PANE -->
+        <div id="adm-pane-users" class="adm-subpane">
+          <div class="grid grid-2 mb-4">
+            <!-- Users List -->
+            <div class="card" style="padding: 0; overflow: hidden;">
+              <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155;">
+                <h4 style="margin: 0; color: #fff;">Registered System Accounts</h4>
+                <small style="color: #94a3b8;">Strictly enforces 1 Admin, 1 Manager, and multiple Viewers.</small>
+              </div>
+              <div class="table-responsive">
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Role</th>
+                      <th>Jurisdiction</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody id="adm-users-tbody">
+                    <tr><td colspan="6" style="text-align: center; padding: 20px; color: #94a3b8;">Loading users...</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <!-- Provision a Viewer or Manager account -->
+            <div class="card" style="padding: 0; overflow: hidden;">
+              <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155;">
+                <h4 style="margin: 0; color: #fbbf24;">Provision System Account</h4>
+                <small style="color: #94a3b8;">Add as many Viewer and Manager accounts as needed. Only one Admin account is allowed.</small>
+              </div>
+              <div class="card-body" style="padding: 24px;">
+                <form id="form-adm-create-user">
+                  <div class="form-group mb-3">
+                    <label for="adm-new-u-role" style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1;">Account Role</label>
+                    <select id="adm-new-u-role" class="form-control" required>
+                      <option value="Viewer">Viewer</option>
+                      <option value="Manager">Manager (all locations)</option>
+                      <option value="Admin" disabled>Admin (single account already exists)</option>
+                    </select>
+                    <small id="adm-new-u-role-help" style="color: #94a3b8; font-size: 0.72rem;">Create Viewer accounts as needed.</small>
+                  </div>
+                  <div class="form-group mb-3">
+                    <label id="adm-new-u-name-label" for="adm-new-u-name" style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1;">Viewer Name</label>
+                    <input type="text" id="adm-new-u-name" class="form-control" required placeholder="e.g. Vikram Mehta">
+                  </div>
+
+                  <div class="form-group mb-3">
+                    <label style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1;">Email / Gmail</label>
+                    <input type="email" id="adm-new-u-email" class="form-control" required placeholder="e.g. vikram@gmail.com">
+                  </div>
+
+                  <div class="form-group mb-3">
+                    <label style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1;">Password</label>
+                    <input type="password" id="adm-new-u-pwd" class="form-control" required minlength="6" placeholder="Password">
+                  </div>
+
+                  <div id="adm-new-u-location-group" class="form-group mb-4">
+                    <label id="adm-new-u-location-label" for="adm-new-u-location" style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1;">Assigned Indian Substation</label>
+                    <select id="adm-new-u-location" class="form-control" required>
+                      <option value="" disabled selected>Loading locations...</option>
+                    </select>
+                  </div>
+
+                  <button type="submit" class="btn btn-primary btn-block" style="padding: 11px; font-weight: 700;">
+                    Create Viewer Account
+                  </button>
+                </form>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 4. ADMIN LOCATIONS & METERS PANE -->
+        <div id="adm-pane-locations" class="adm-subpane">
+          <div class="card mb-4" style="padding: 0; overflow: hidden;">
+            <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155;">
+              <h4 style="margin: 0; color: #fff;">Indian National Grid Distribution Hubs</h4>
+              <small style="color: #94a3b8;">Regional distribution substations, authorized managers, and connected meters</small>
+            </div>
+            <div class="table-responsive">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>Substation Name</th>
+                    <th>Grid Region & Address</th>
+                    <th>Assigned Manager</th>
+                    <th>Meter Fleet</th>
+                  </tr>
+                </thead>
+                <tbody id="adm-locations-tbody">
+                  <tr><td colspan="4" style="text-align: center; padding: 20px; color: #94a3b8;">Loading locations...</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div class="card mb-4" style="max-width: 800px; padding: 0; overflow: hidden;">
+            <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155;">
+              <h4 style="margin: 0; color: #fbbf24;">Add an Indian Grid Location</h4>
+              <small style="color: #94a3b8;">Add a city, suburb, or industrial area such as Mumbai, Navi Mumbai, or Palghar.</small>
+            </div>
+            <div class="card-body" style="padding: 24px;">
+              <form id="form-adm-create-location">
+                <div class="grid grid-2">
+                  <div class="form-group mb-3">
+                    <label style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1;">Location Name</label>
+                    <input type="text" id="adm-location-name" class="form-control" required placeholder="e.g. Navi Mumbai - Airoli Technology Park">
+                  </div>
+                  <div class="form-group mb-3">
+                    <label style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1;">City</label>
+                    <input type="text" id="adm-location-city" class="form-control" required placeholder="e.g. Navi Mumbai">
+                  </div>
+                  <div class="form-group mb-3">
+                    <label style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1;">Area / Region</label>
+                    <input type="text" id="adm-location-region" class="form-control" placeholder="e.g. Airoli">
+                  </div>
+                  <div class="form-group mb-3">
+                    <label style="font-size: 0.78rem; font-weight: 600; color: #cbd5e1;">Address</label>
+                    <input type="text" id="adm-location-address" class="form-control" placeholder="Facility or substation address">
+                  </div>
+                </div>
+                <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-weight: 700;">Add Location</button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <!-- 5. ADMIN SETTINGS PANE -->
+        <div id="adm-pane-settings" class="adm-subpane">
+          <div class="card mb-4" style="max-width: 680px; padding: 0; overflow: hidden;">
+            <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155;">
+              <h4 style="margin: 0; color: #fbbf24;">System Thresholds & Energy Tariff</h4>
+              <small style="color: #94a3b8;">Configure grid anomaly limits and kWh pricing rates.</small>
+            </div>
+            <div class="card-body" style="padding: 24px;">
+              <form id="form-adm-settings">
+                <div class="form-group mb-3">
+                  <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">High Consumption Threshold (kWh)</label>
+                  <input type="number" id="adm-set-high-threshold" class="form-control" step="1" required>
+                  <small style="color: #94a3b8; font-size: 0.72rem;">Readings exceeding this value trigger automated warnings.</small>
+                </div>
+
+                <div class="form-group mb-3">
+                  <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">Critical Load Spike Threshold (kWh)</label>
+                  <input type="number" id="adm-set-critical-threshold" class="form-control" step="1" required>
+                </div>
+
+                <div class="form-group mb-4">
+                  <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">Electricity Tariff Rate (₹ per kWh)</label>
+                  <input type="number" id="adm-set-rate" class="form-control" step="0.1" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="padding: 10px 24px; font-weight: 700;">
+                  Save Grid Configuration
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
+        <div id="adm-pane-notifications" class="adm-subpane">
+          <div class="card mb-4" style="padding: 0; overflow: hidden;">
+            <div class="card-header" style="padding: 16px 20px; border-bottom: 1px solid #334155; display: flex; justify-content: space-between; align-items: center; gap: 12px;">
+              <div>
+                <h4 style="margin: 0; color: #fff;">Notifications</h4>
+                <small style="color: #94a3b8;">New complaints, assignments, and system status updates.</small>
+              </div>
+              <button type="button" class="btn btn-sm btn-secondary btn-mark-all-read">Mark all read</button>
+            </div>
+            <div class="card-body" style="padding: 20px;">
+              <div class="role-notification-list" data-role-notifications="Admin"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+
+  <!-- ============================================== -->
+  <!-- MODAL: REPORT A PROBLEM (VIEWER) -->
+  <!-- ============================================== -->
+  <div id="modal-report-problem" class="modal-backdrop hidden">
+    <div class="modal-card viewer-report-modal" style="max-width: 580px;">
+      <div class="modal-header">
+        <h4 style="margin: 0; color: #fff;">Report an Electricity or Meter Problem</h4>
+        <button type="button" id="btn-close-report-modal" style="background: none; border: none; color: #94a3b8; cursor: pointer;">
+          <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+        </button>
+      </div>
+      <form id="form-submit-complaint" class="viewer-report-form">
+        <div class="modal-body">
+          <div class="form-group mb-3">
+            <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">Complaint Title</label>
+            <input type="text" id="cmp-title" class="form-control" placeholder="e.g. Unusually high spike detected" required>
+          </div>
+
+          <div class="form-group mb-3">
+            <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">Problem Category</label>
+            <select id="cmp-category" class="form-control" required>
+              <option value="Incorrect electricity reading">1. Incorrect electricity reading</option>
+              <option value="High electricity consumption">2. High electricity consumption</option>
+              <option value="Meter or sensor issue">3. Meter or sensor issue</option>
+              <option value="Dashboard or login issue">4. Dashboard or login issue</option>
+              <option value="Other">5. Other</option>
+            </select>
+          </div>
+
+          <div class="form-group mb-3">
+            <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">Problem Description</label>
+            <textarea id="cmp-description" class="form-control" rows="4" placeholder="Provide full details of the issue..." required></textarea>
+          </div>
+
+          <div class="form-group mb-4">
+            <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">Meter Reference (Optional)</label>
+            <input type="text" id="cmp-meter-ref" class="form-control" placeholder="e.g. MTR-MUM-01">
+          </div>
+
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="btn-cancel-report-modal" class="btn btn-outline-secondary">Cancel</button>
+          <button type="submit" id="btn-submit-problem" class="btn btn-primary" style="padding: 10px 18px; font-weight: 700;">
+            Submit Complaint
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+
+  <!-- ============================================== -->
+  <!-- MODAL: COMPLAINT DETAILS & MESSAGING -->
+  <!-- ============================================== -->
+  <div id="modal-complaint-details" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width: 650px;">
+      <div class="modal-header">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <strong id="dtl-cmp-id" style="color: #38bdf8; font-family: monospace; font-size: 1.1rem;">CMP-1001</strong>
+            <span id="dtl-cmp-status" class="complaint-status-pill status-pending">Pending</span>
+          </div>
+          <h4 id="dtl-cmp-title" style="margin: 4px 0 0; color: #fff;">Complaint Title</h4>
+        </div>
+        <button type="button" id="btn-close-dtl-modal" style="background: none; border: none; color: #94a3b8; cursor: pointer;">
+          <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+        </button>
+      </div>
+      <div class="modal-body" style="max-height: 70vh; overflow-y: auto;">
+        
+        <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.8rem; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+          <div><span style="color: #94a3b8;">Category:</span> <strong id="dtl-cmp-cat">--</strong></div>
+          <div><span style="color: #94a3b8;">Location:</span> <strong id="dtl-cmp-loc">--</strong></div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Problem Description</label>
+          <div id="dtl-cmp-desc" style="background: rgba(30, 41, 59, 0.5); padding: 12px; border-radius: 8px; font-size: 0.85rem; color: #cbd5e1; margin-top: 4px;"></div>
+        </div>
+
+        <!-- Final Solution / Resolution Details -->
+        <div id="dtl-resolution-box" style="display: none; background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); border-radius: 8px; padding: 14px; margin-bottom: 16px;">
+          <div style="color: #34d399; font-weight: 700; font-size: 0.85rem; margin-bottom: 4px;">Official Resolution & Solution</div>
+          <div id="dtl-resolution-details" style="font-size: 0.85rem; color: #f8fafc;"></div>
+        </div>
+
+        <!-- Activity & Communication Thread -->
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; margin-bottom: 8px; display: block;">Communication Thread</label>
+          <div id="dtl-messages-container"></div>
+        </div>
+
+        <!-- Follow-up message form -->
+        <form id="form-dtl-message" style="display: flex; gap: 8px;">
+          <input type="text" id="dtl-input-message" class="form-control form-control-sm" placeholder="Send follow-up message..." required style="flex: 1;">
+          <button type="submit" class="btn btn-sm btn-primary">Send</button>
+        </form>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ============================================== -->
+  <!-- MODAL: MANAGER RESOLVE COMPLAINT -->
+  <!-- ============================================== -->
+  <div id="modal-mgr-resolve" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width: 620px;">
+      <div class="modal-header">
+        <div>
+          <span id="mgr-res-id" style="color: #22d3ee; font-weight: 800; font-family: monospace;">CMP-1001</span>
+          <h4 id="mgr-res-title" style="margin: 4px 0 0; color: #fff;">Title</h4>
+        </div>
+        <button type="button" id="btn-close-mgr-modal" style="background: none; border: none; color: #94a3b8; cursor: pointer;">
+          <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.8rem;">
+          <div><span style="color: #94a3b8;">Consumer:</span> <strong id="mgr-res-viewer">--</strong></div>
+          <div><span style="color: #94a3b8;">Location:</span> <strong id="mgr-res-location">--</strong></div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Problem Description</label>
+          <div id="mgr-res-desc" style="background: rgba(30, 41, 59, 0.5); padding: 10px; border-radius: 8px; font-size: 0.82rem; color: #cbd5e1; margin-top: 4px;"></div>
+        </div>
+
+        <form id="form-mgr-resolve">
+          <div class="form-group mb-3">
+            <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">Update Status</label>
+            <select id="mgr-res-status-select" class="form-control" required>
+              <option value="In Progress">In Progress (Investigating)</option>
+              <option value="Resolved">Resolved (Solution Provided)</option>
+              <option value="Rejected">Rejected</option>
+            </select>
+          </div>
+
+          <div class="form-group mb-3">
+            <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">Final Resolution & Solution Details</label>
+            <textarea id="mgr-res-notes" class="form-control" rows="3" placeholder="Document technical corrective action or meter check results..."></textarea>
+          </div>
+
+          <div class="form-group mb-4">
+            <label style="font-size: 0.8rem; font-weight: 600; color: #cbd5e1;">Reply Message to Viewer (Optional)</label>
+            <input type="text" id="mgr-res-reply" class="form-control" placeholder="Ask viewer for additional info or confirm fix...">
+          </div>
+
+          <button type="submit" class="btn btn-primary btn-block" style="padding: 11px; font-weight: 700;">
+            Update Status & Save Resolution
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ============================================== -->
+  <!-- MODAL: ADMIN COMPLAINT REOPEN & ASSIGN -->
+  <!-- ============================================== -->
+  <div id="modal-adm-complaint" class="modal-backdrop hidden">
+    <div class="modal-card" style="max-width: 650px;">
+      <div class="modal-header">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span id="adm-cmp-id" style="color: #fbbf24; font-weight: 800; font-family: monospace;">CMP-1001</span>
+            <span id="adm-cmp-status" class="complaint-status-pill status-pending">Pending</span>
+          </div>
+          <h4 id="adm-cmp-title" style="margin: 4px 0 0; color: #fff;">Title</h4>
+        </div>
+        <button type="button" id="btn-close-adm-modal" style="background: none; border: none; color: #94a3b8; cursor: pointer;">
+          <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+        </button>
+      </div>
+      <div class="modal-body">
+        
+        <div style="background: rgba(15, 23, 42, 0.6); padding: 12px; border-radius: 8px; margin-bottom: 16px; font-size: 0.8rem;">
+          <div><span style="color: #94a3b8;">Consumer:</span> <strong id="adm-cmp-viewer">--</strong></div>
+          <div><span style="color: #94a3b8;">Location:</span> <strong id="adm-cmp-loc">--</strong></div>
+        </div>
+
+        <div style="margin-bottom: 16px;">
+          <label style="font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase;">Problem Description</label>
+          <div id="adm-cmp-desc" style="background: rgba(30, 41, 59, 0.5); padding: 10px; border-radius: 8px; font-size: 0.82rem; color: #cbd5e1; margin-top: 4px;"></div>
+        </div>
+
+        <!-- Assignment Form -->
+        <form id="form-adm-assign" class="mb-4" style="background: rgba(15, 23, 42, 0.8); padding: 14px; border-radius: 8px;">
+          <h5 style="margin: 0 0 10px; color: #fbbf24; font-size: 0.85rem;">Assign / Reassign Regional Manager</h5>
+          <div class="grid grid-2 mb-3">
+            <div>
+              <label style="font-size: 0.75rem; color: #94a3b8;">Manager</label>
+              <select id="adm-assign-mgr-select" class="form-control form-control-sm"></select>
+            </div>
+            <div>
+              <label style="font-size: 0.75rem; color: #94a3b8;">Priority</label>
+              <select id="adm-assign-priority-select" class="form-control form-control-sm">
+                <option value="Low">Low</option>
+                <option value="Medium">Medium</option>
+                <option value="High">High</option>
+                <option value="Critical">Critical</option>
+              </select>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-sm btn-primary">Update Assignment</button>
+        </form>
+
+        <!-- Reopen Box -->
+        <div id="adm-reopen-container" style="display: none; background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.3); padding: 14px; border-radius: 8px;">
+          <h5 style="color: #f87171; margin: 0 0 6px; font-size: 0.85rem;">Reopen Complaint</h5>
+          <p style="font-size: 0.75rem; color: #94a3b8; margin-bottom: 8px;">If the reported issue persists, reopen the investigation.</p>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="adm-reopen-reason-input" class="form-control form-control-sm" placeholder="Reason for reopening (optional)..." style="flex: 1;">
+            <button type="button" id="btn-adm-reopen-case" class="btn btn-sm btn-danger">Reopen Case</button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+
+  <!-- CLIENT SCRIPTS -->
+  <script src="/js/api.js"></script>
+  <script src="/js/unified-app.js"></script>
+
+</body>
+</html>
