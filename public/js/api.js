@@ -60,6 +60,11 @@ const API = {
 
     try {
       const response = await fetch(`${API_BASE}${endpoint}`, config);
+      const contentType = response.headers.get('content-type') || '';
+      if (!contentType.includes('application/json')) {
+        throw new Error('The API returned a web page instead of JSON. Start PowerPulse with "npm start" and open http://localhost:5000.');
+      }
+
       const data = await response.json();
 
       if (!response.ok) {
