@@ -233,6 +233,10 @@ router.post('/logout', (req, res) => {
 // @route   GET /api/auth/demo-accounts
 // @desc    Public helper endpoint to return demo credentials for testing
 router.get('/demo-accounts', (req, res) => {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ success: false, message: 'Demo accounts are not available in production.' });
+  }
+
   res.json({
     success: true,
     accounts: [

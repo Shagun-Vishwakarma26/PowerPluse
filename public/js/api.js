@@ -1,7 +1,8 @@
 /**
  * PowerPulse REST API Client
  */
-const API_BASE = '/api';
+const configuredApiBase = window.POWERPULSE_API_BASE?.trim().replace(/\/+$/, '');
+const API_BASE = configuredApiBase ? `${configuredApiBase}/api` : '/api';
 
 const API = {
   getToken() {

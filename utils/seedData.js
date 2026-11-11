@@ -11,6 +11,40 @@ const seedDatabase = async () => {
   try {
     console.log('⚡ Initializing PowerPulse database seed with Indian Locations...');
 
+    if (process.env.NODE_ENV === 'production') {
+      const existingCounts = await Promise.all([
+        User.countDocuments(),
+        Location.countDocuments(),
+        Meter.countDocuments(),
+        Reading.countDocuments(),
+        Alert.countDocuments(),
+        Setting.countDocuments(),
+        Complaint.countDocuments(),
+        Notification.countDocuments()
+      ]);
+
+      if (existingCounts.some((count) => count > 0)) {
+        console.log('Production database contains data; skipping destructive seed.');
+        return;
+      }
+    }
+
+    const seedCredentials = process.env.NODE_ENV === 'production'
+      ? {
+          admin: { email: process.env.INITIAL_ADMIN_EMAIL, password: process.env.INITIAL_ADMIN_PASSWORD },
+          manager: { email: process.env.INITIAL_MANAGER_EMAIL, password: process.env.INITIAL_MANAGER_PASSWORD },
+          viewer: { email: process.env.INITIAL_VIEWER_EMAIL, password: process.env.INITIAL_VIEWER_PASSWORD }
+        }
+      : {
+          admin: { email: 'admin@powerpulse.io', password: 'admin123' },
+          manager: { email: 'manager@powerpulse.io', password: 'manager123' },
+          viewer: { email: 'viewer@powerpulse.io', password: 'viewer123' }
+        };
+
+    if (Object.values(seedCredentials).some(({ email, password }) => !email || !password)) {
+      throw new Error('Production initial account email and password environment variables are required.');
+    }
+
     // Clear existing collections
     await Promise.all([
       User.deleteMany({}),
@@ -42,8 +76,8 @@ const seedDatabase = async () => {
     // 2. Exactly ONE System Administrator
     const admin = await User.create({
       name: 'Chief Administrator (Admin)',
-      email: 'admin@powerpulse.io',
-      password: 'admin123',
+      email: seedCredentials.admin.email,
+      password: seedCredentials.admin.password,
       role: 'Admin',
       assignedLocations: [
         'Mumbai - BKC Distribution Hub',
@@ -67,8 +101,8 @@ const seedDatabase = async () => {
     // Seed a default Manager; the system supports multiple Managers.
     const manager = await User.create({
       name: 'Regional Operations Manager',
-      email: 'manager@powerpulse.io',
-      password: 'manager123',
+      email: seedCredentials.manager.email,
+      password: seedCredentials.manager.password,
       role: 'Manager',
       assignedLocations: [
         'Mumbai - BKC Distribution Hub',
@@ -96,8 +130,8 @@ const seedDatabase = async () => {
     // Pre-seeded Default Viewer (Consumers can also register with their own Gmail!)
     const viewer1 = await User.create({
       name: 'Facility Consumer',
-      email: 'viewer@powerpulse.io',
-      password: 'viewer123',
+      email: seedCredentials.viewer.email,
+      password: seedCredentials.viewer.password,
       role: 'Viewer',
       assignedLocations: ['Mumbai - BKC Distribution Hub'],
       status: 'Active'
@@ -712,6 +746,7 @@ const seedDatabase = async () => {
     console.log('✅ PowerPulse database seeded with Indian Locations!');
   } catch (error) {
     console.error('Error seeding database:', error);
+    throw error;
   }
 };
 

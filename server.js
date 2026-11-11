@@ -24,15 +24,10 @@ const notificationRoutes = require('./routes/notificationRoutes');
 
 const app = express();
 
-// Connect Database & run seed
-connectDB().then(() => {
-  seedDatabase();
-});
-
 // Middleware
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-app.use(cors());
+app.use(cors(process.env.FRONTEND_URL ? { origin: process.env.FRONTEND_URL } : undefined));
 
 // Helmet Content Security Policy for CDN script loading (Chart.js, Lucide icons, Google Fonts)
 app.use(
@@ -98,11 +93,19 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`=======================================================`);
-  console.log(`🚀 PowerPulse Server running on http://localhost:${PORT}`);
-  console.log(`⚡ Admin Login:   http://localhost:${PORT}/admin-login.html`);
-  console.log(`⚡ Manager Login: http://localhost:${PORT}/manager-login.html`);
-  console.log(`⚡ Viewer Login:  http://localhost:${PORT}/viewer-login.html`);
-  console.log(`=======================================================`);
+connectDB()
+  .then(() => seedDatabase())
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`=======================================================`);
+      console.log(`🚀 PowerPulse Server running on port ${PORT}`);
+      console.log(`⚡ Admin Login:   http://localhost:${PORT}/admin-login.html`);
+      console.log(`⚡ Manager Login: http://localhost:${PORT}/manager-login.html`);
+      console.log(`⚡ Viewer Login:  http://localhost:${PORT}/viewer-login.html`);
+      console.log(`=======================================================`);
+    });
+  })
+  .catch((error) => {
+    console.error('Application startup failed:', error.message);
+    process.exit(1);
 });

@@ -2,9 +2,10 @@ const mongoose = require('mongoose');
 const { MongoMemoryServer } = require('mongodb-memory-server');
 
 const connectDB = async () => {
+  const connStr = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/powerpulse';
+
   try {
-    const connStr = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/powerpulse';
-    console.log(`Connecting to MongoDB at: ${connStr}`);
+    console.log('Connecting to configured MongoDB instance...');
     
     // Set connection timeout short so fallback triggers quickly if local mongodb is down
     await mongoose.connect(connStr, {
@@ -12,6 +13,10 @@ const connectDB = async () => {
     });
     console.log(`MongoDB Connected: ${mongoose.connection.host}`);
   } catch (error) {
+    if (process.env.NODE_ENV === 'production') {
+      throw error;
+    }
+
     console.warn(`Primary MongoDB Connection Failed (${error.message}). Starting MongoMemoryServer fallback...`);
     try {
       const mongod = await MongoMemoryServer.create();

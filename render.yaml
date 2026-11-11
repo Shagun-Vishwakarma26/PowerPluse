@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: powerpulse-api
+    runtime: node
+    plan: free
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /api/auth/locations
+    envVars:
+      - key: NODE_VERSION
+        value: 22.17.1
+      - key: NODE_ENV
+        value: production
+      - key: MONGO_URI
+        sync: false
+      - key: FRONTEND_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: INITIAL_ADMIN_EMAIL
+        sync: false
+      - key: INITIAL_ADMIN_PASSWORD
+        sync: false
+      - key: INITIAL_MANAGER_EMAIL
+        sync: false
+      - key: INITIAL_MANAGER_PASSWORD
+        sync: false
+      - key: INITIAL_VIEWER_EMAIL
+        sync: false
+      - key: INITIAL_VIEWER_PASSWORD
+        sync: false
